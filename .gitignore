@@ -1,0 +1,7 @@
+report/figures/
+data/
+venv/
+.venv/
+.vscode/
+report/*.tex
+report/*.bib
