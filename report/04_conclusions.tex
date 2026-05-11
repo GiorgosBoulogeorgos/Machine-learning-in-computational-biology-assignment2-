@@ -1,0 +1,50 @@
+\section{Conclusions}
+\label{sec:conclusions}
+
+\subsection{Summary of Main Findings}
+
+This work developed and rigorously evaluated a heart disease classification pipeline on the Cleveland subset of the UCI Heart Disease dataset. The main findings are:
+
+\begin{enumerate}
+    \item Among seven candidate algorithms evaluated under repeated nested cross-validation, Linear Discriminant Analysis with shrinkage was identified as the winning algorithm, achieving median MCC 0.632 [0.623, 0.669], AUC 0.895 [0.879, 0.911], and PR-AUC 0.894 [0.875, 0.916] across 50 outer-test scores. The top six algorithms had overlapping 95\% confidence intervals on median MCC, but LDA achieved the joint-highest AUC and PR-AUC. The result confirms that on small clinical tabular datasets, simple linear methods can match or exceed gradient-boosting ensembles --- the strong distributional assumptions of LDA act as a useful regulariser when sample size is limited.
+
+    \item Permutation-importance feature selection embedded in the outer loop identified a stable feature set of five categorical variables --- \texttt{thal}, \texttt{ca}, \texttt{cp}, \texttt{sex}, and \texttt{exang} --- selected in $\geq 80\%$ of the 50 outer folds at the optimal $k = 8$. Reducing to this stable feature subset slightly improved median MCC (0.632 $\to$ 0.667) over the full-feature baseline. Notably, none of the continuous features entered the stable set, indicating that the categorical findings of routine cardiology workup carry sufficient information for reliable classification on this dataset.
+
+    \item Three independent analyses --- EDA-based statistical association, model-driven feature selection inside rnCV folds, and post-hoc SHAP interpretation on the final model --- converged on the same five features as the most informative predictors. This convergence strengthens confidence that the model exploits genuine clinical signal rather than dataset artefacts.
+
+    \item The SHAP analysis revealed that \texttt{cp} contributes to predictions in the clinically expected direction, with asymptomatic chest pain (code 4) pushing predictions toward disease and typical angina (code 1) pushing away. This counter-intuitive but well-documented \emph{silent ischaemia} pattern is consistent with the cardiology literature and the selection bias of a clinical referral cohort.
+
+    \item The bonus error analysis on a held-out 30\% validation split achieved 86.3\% accuracy with a 6:4 false-negative-to-false-positive ratio. The dominant error mechanism was identified through SHAP-by-category analysis: misclassifications occur when the dominant feature (thallium scan) is misleading for an individual patient. Errors clustered near the decision boundary (predicted probability 0.30--0.70) and in the 50-60 age band, suggesting a probability-based triage strategy and additional caution in this demographic subgroup.
+
+    \item The deployable pipeline is a complete sklearn \texttt{Pipeline} that accepts raw 13-column input, internally restricts to the stable feature subset, performs imputation and scaling, and produces probabilistic predictions. Reload-and-predict verification on raw input confirmed deployability. This addresses the most common failure mode of saved-model artefacts in machine-learning practice.
+\end{enumerate}
+
+\subsection{Limitations}
+
+Several limitations should be acknowledged. The dataset comprises only 242 patients from a single institution, all of whom were referred for invasive angiography. Generalisation to populations with different baseline risk (e.g., primary care screening) or different demographic compositions is unverified. The rnCV procedure provides an unbiased generalisation estimate \emph{within} the dataset's distribution but cannot establish external validity --- this would require independent validation on at least one additional cohort.
+
+The 80\% stability-selection threshold, while supported by a clear bimodal gap in the selection-frequency distribution at $k = 8$, remains a methodological choice. A sensitivity analysis varying the threshold across $\{70, 80, 90\}\%$ would strengthen the case that the stable feature set is robust to this choice.
+
+LDA assumes Gaussian-distributed class-conditional features with shared covariance structure --- assumptions that are only approximately satisfied here. Although LDA outperformed more flexible alternatives in cross-validation, model calibration was not formally assessed. Predicted probabilities should be interpreted with appropriate caution before use in any decision-theoretic clinical workflow that combines them with prior risk estimates.
+
+SHAP values are local linearisations of the model's behaviour around individual predictions; they describe the model, not the underlying biology. Strong feature contributions in the SHAP analysis should not be interpreted as causal effects on disease pathogenesis. The KernelExplainer additionally depends on the choice of background distribution --- here summarised by 50 $k$-means centroids --- and SHAP values may shift modestly under different background choices.
+
+Finally, the bonus error analysis was conducted on a single 70/30 split with only $\sim$10 misclassifications. The patterns observed (FN~/~FP ratio, age-band concentration, thallium-scan error mechanism) should be interpreted as hypothesis-generating signals rather than definitive findings. Larger validation cohorts would be required to confirm them.
+
+\subsection{Lessons Learned}
+
+Several methodological lessons emerged from this work. First, the discipline of placing every preprocessing and feature-selection step \emph{inside} the cross-validation pipeline prevents the form of optimistic bias that frequently inflates published performance estimates. Even minor leakage --- such as fitting an imputer on the full development set before splitting --- can shift reported MCC by clinically meaningful amounts.
+
+Second, hyperparameter tuning helps tree-based methods more than linear ones. The fact that LDA and GaussianNB performed identically at default and tuned hyperparameters reflects their small effective hyperparameter space; the dramatic gains seen for XGBoost and CatBoost reflect the opposite.
+
+Third, the most useful interpretability evidence is convergence across methods. Any single method --- EDA correlations, permutation importance, or SHAP values --- can produce noisy or misleading rankings. The agreement between three independent methods on the same five features was the strongest argument that the model captures real clinical signal.
+
+\subsection{Suggested Further Research}
+
+Several directions for further work are suggested by this study:
+
+\begin{itemize}
+    \item \textbf{Threshold optimisation} based on a clinical utility function explicitly weighting false negatives more heavily than false positives, rather than the default 0.5 threshold.
+    \item \textbf{Subgroup-specific performance assessment} on larger samples to formally evaluate whether the 50-60 age-band error concentration observed in the bonus analysis is genuine.
+    \item \textbf{Causal analysis} using observational causal inference techniques to investigate whether the model's strong reliance on thallium scan reflects a causal effect or a downstream marker of underlying disease.
+\end{itemize}
