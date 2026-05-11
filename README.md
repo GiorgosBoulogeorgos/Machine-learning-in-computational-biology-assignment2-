@@ -21,6 +21,7 @@ Linear Discriminant Analysis (LDA) was identified as the winning algorithm:
 ## Repository Structure
 * `src/`: Core logic, including the `RepeatedNestedCV` class.
 * `notebooks/`: Exploratory Data Analysis and model development.
+* `results/` : Intermediate results from running the notebooks. 
 * `models/`: Serialized `final_model.pkl`.
 * `reports/`: Full academic report.
 * `figures/` : All figures generated. 
